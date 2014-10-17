@@ -7,37 +7,28 @@ function polynomial(x::Array,alpha::Real,beta::Real,N::Integer)
 	# (alpha+beta <> -1) at points x for order N and returns P[1:length(xp))]
 	# Note : They are normalized to be orthonormal.
 	# Turn points into row if needed.
-	println("y::",x,alpha,beta,N)
-	println("")
-	println("y1")
-	xp = x
+	xp = reshape(x,size(x)[1],1)
 	dims = size(xp)
 	if dims[2]==1
 		xp = xp'
 	end
-	println("y2")
 	PL = zeros(N+1,length(xp))
 	# Initial values P_0(x) and P_1(x)
 	gamma0 = 2^(alpha+beta+1)/(alpha+beta+1)*gamma(alpha+1)*gamma(beta+1)/gamma(alpha+beta+1)
 	PL[1,:] = 1.0/sqrt(gamma0)
-	println("y3")
-	println("pl:",PL')
 	if N==0
 		P=PL'
 		return P
 	end
-	println("y4")
 	gamma1 = (alpha+1)*(beta+1)/(alpha+beta+3)*gamma0
 	PL[2,:] = ((alpha+beta+2)*xp/2 + (alpha-beta)/2)/sqrt(gamma1)
 	if N==1
-		P=PL(N+1,:)'
+		P=PL[N+1,:]'
 		return P
 	end
-	println("y5")
 	# Repeat value in recurrence.
 	aold = 2/(2+alpha+beta)*sqrt((alpha+1)*(beta+1)/(alpha+beta+3))
 	# Forward recurrence using the symmetry of the recurrence.
-	println("y6")
 	for i=1:N-1
 		h1 = 2*i+alpha+beta
 		anew = 2/(h1+2)*sqrt( (i+1)*(i+1+alpha+beta)*(i+1+alpha)*(i+1+beta)/(h1+1)/(h1+3))
@@ -46,7 +37,6 @@ function polynomial(x::Array,alpha::Real,beta::Real,N::Integer)
 		aold =anew
 	end
 	P = PL[N+1,:]'
-	println("y7")
 	return P
 end
 
@@ -54,6 +44,7 @@ function gradient(r::Array, alpha::Real,beta::Real,N::Integer)
 	# function [dP] = basis.gradient(r, alpha, beta, N);
 	# Purpose: Evaluate the derivative of the Jacobi polynomial of type (alpha,beta)>-1,
 	# at points r for order N and returns dP[1:length(r))]
+	r = reshape(r,size(r)[1],1)
 	dP = zeros(length(r), 1);
 	if N == 0
 		dP[:,:] = 0.0;
@@ -86,8 +77,8 @@ function gauss(alpha::Real,beta::Real,N::Integer)
 	end
 	J = J + J'
 	#Compute quadrature by eigenvalue solve
-	(V,D) = eig(J)
-	x = diagm(vec(D))
+    (D,V) = eig(J)
+	x = reshape(D,size(D)[1],1)
 	w = (V[1,:]').^2*2^(alpha+beta+1)/(alpha+beta+1)*gamma(alpha+1)*gamma(beta+1)/gamma(alpha+beta+1)
 	return x,w
 end
@@ -107,7 +98,7 @@ function gll(alpha::Real,beta::Real,N::Integer)
 		return x,w
 	end
 	xint,wq = gauss(alpha+1,beta+1,N-2)
-	x = [-1, xint', 1]'
+	x = hcat(-1, xint', 1)'
 	# compute the weights
 	w = polynomial(x,alpha, beta, N)
 	adgammaN = (2.0*N + alpha + beta + 1.0) / (N * (alpha + beta + N + 1.0))
