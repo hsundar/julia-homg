@@ -33,43 +33,28 @@ type Refel
 	Mg # exact 1D Mass matrix (Nrp x Nrp) at gauss
 	invMg
 	function Refel(d::Int64, order::Int64)
-		println("x0")
 		elem = new()
 		elem.dim = d
 		elem.N = order
 		elem.Nrp = order + 1
-		println("x1")
 		(elem.r, elem.wgll) = Basis.gll(0, 0, elem.N)
-		println("elem-r: ",elem.r)
-		println("elem-wgll: ",elem.wgll)
 		r_hby2 = [0.5*(elem.r - 1);	0.5*(elem.r[2:end] + 1)]
-		println("x11")
 		r_2p = Basis.gll(0, 0, 2*elem.N)
-		println("x12")
 		(elem.g, elem.w) = Basis.gauss(0, 0, elem.N)
-		println("x2")
 		elem.Vr = zeros (order+1, order+1)
 		elem.gradVr = zeros (order+1, order+1)
 		elem.Vg = zeros (order+1, order+1)
 		elem.gradVg = zeros (order+1, order+1)
 		Vph = zeros (order+1, 2*order+1)
 		Vpp = zeros (order+1, 2*order+1);
-		println("x3")
 		for i=1:elem.Nrp
-			println("x31")
-#			elem.Vr[i,:] = Basis.polynomial(elem.r, 0, 0, i-1);
-			println("x32")
-#			elem.gradVr[i,:] = Basis.gradient(elem.r, 0, 0, i-1);
-			println("x33")
-#			elem.Vg[i,:] = Basis.polynomial(elem.g, 0, 0, i-1);
-			println("x34")
-#			elem.gradVg[i,:] = Basis.gradient(elem.g, 0, 0, i-1);
-			println("x35")
-#			Vph[i,:] = Basis.polynomial(r_hby2, 0, 0, i-1);
-			println("x36")
-#			Vpp[i,:] = Basis.polynomial(r_2p, 0, 0, i-1);
+			elem.Vr[i,:] = Basis.polynomial(elem.r, 0, 0, i-1);
+			elem.gradVr[i,:] = Basis.gradient(elem.r, 0, 0, i-1);
+			elem.Vg[i,:] = Basis.polynomial(elem.g, 0, 0, i-1);
+			elem.gradVg[i,:] = Basis.gradient(elem.g, 0, 0, i-1);
+			Vph[i,:] = Basis.polynomial(r_hby2, 0, 0, i-1);
+			Vpp[i,:] = Basis.polynomial(r_2p[1], 0, 0, i-1);
 		end
-		println("x4")
 		elem.Dr = transpose(elem.Vr \ elem.gradVr);
 		elem.Dg = transpose(elem.Vr \ elem.gradVg);
 		iVr = elem.Vr \ eye(order+1);

@@ -24,9 +24,9 @@ function IAIX(A::Array, x::Array)
     q = reshape(x, N, N, N)
     y = zeros(N,N,N)
     for i=1:N
-        y[i,:,:] = A * squeeze(q[i,:,:])
+        y[i,:,:] = reshape(A * squeeze(q[i,:,:],1),1,N,N)
     end
-    y = reshape(y,size(y)[1].*size(y)[2],1)
+    y = reshape(y,size(y)[1].*size(y)[2].*size(y)[3],1)
 end
 function AIIX(A::Array, x::Array)
     N = size (A, 1)
