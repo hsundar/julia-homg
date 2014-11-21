@@ -1,5 +1,5 @@
 using Basis: polynomial, gradient, gauss, gll
-
+export Refel
 type Refel
 	dim
 	N # polynomial order

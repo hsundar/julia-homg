@@ -45,11 +45,11 @@ function grad(refel, u)
     end
     return du
 end    
-function Grad2(A::Array, x::Array)
-    this.getIAX(A, x), this.getAIX(A, x)
+function grad2(A::Array, x::Array)
+    IAX(A, x), AIX(A, x)
 end
-function Grad3(A::Array, x::Array)
-    this.getIIAX(A, x), this.getIAIX(A, x), this.getAIIX(A, x)
+function grad3(A::Array, x::Array)
+    IIAX(A, x), IAIX(A, x), AIIX(A, x)
 end
 
 end
