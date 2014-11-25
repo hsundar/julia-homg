@@ -230,8 +230,8 @@ end
 	function assemble_rhs(self, fx, order)
 		set_order(self, order)
 		refel = Refel(self.dim, order)
-		dof = prod(self.nelems*order + 1)
-		ne = prod(self.nelems)
+		dof = prod([self.nelems...]*order + 1)
+		ne = prod([self.nelems...])
 		f = zeros(dof,1)
 		# loop over elements
 		for e=1:ne
@@ -240,12 +240,12 @@ end
 			(J,D) = geometric_factors(self, refel, pts)
 			gpts = element_gauss(self, e, refel)
 			if (self.dim == 2)
-				fd = arrayfun( fx, gpts[:,1], gpts[:,2] )
+				fd = fx(gpts[:,1], gpts[:,2] )
 			else
-				fd = arrayfun( fx, gpts[:,1], gpts[:,2], gpts[:,3] )
+				fd = fx(gpts[:,1], gpts[:,2], gpts[:,3] )
 			end
 			Jd = refel.W .* J .* fd
-			f(idx) = f(idx) + refel.Q' * Jd
+			f[idx] = f[idx] + refel.Q' * Jd
 		end
 		return f
 	end
