@@ -4,20 +4,20 @@ module Tensor
 function IAX(A::Array, x::Array)
     N = size(A, 1)
     y = A * reshape(x, N, N)
-    y = reshape(y,size(y)[1].*size(y)[2],1)
+    y = y[:]
 end
 
 function AIX(A::Array, x::Array)
     N = size(A, 1)
     y = A * reshape(x, N, N)'
     y = y'
-    y = reshape(y,size(y)[1].*size(y)[2],1)
+    y = y[:]
 end
 
 function IIAX(A::Array, x::Array)
     N = size(A, 1)
     y = A * reshape(x, N, N*N)
-    y = reshape(y,size(y)[1].*size(y)[2],1)
+    y = y[:]
 end
 function IAIX(A::Array, x::Array)
     N = size(A, 1)
@@ -31,7 +31,7 @@ end
 function AIIX(A::Array, x::Array)
     N = size (A, 1)
     y = reshape(x, N*N, N) * A'
-    y = reshape(y,size(y)[1].*size(y)[2],1)
+    y = y[:]
 end
 function grad(refel, u)
     du = zeros(length(u), refel.dim);

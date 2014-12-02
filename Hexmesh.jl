@@ -4,6 +4,7 @@ module Mesh
 include("Refel.jl")
 include("Basis.jl")
 include("Tensor.jl")
+include("BaseCustom.jl")
 
 export set_coeff
 
@@ -26,6 +27,18 @@ type Hexmesh
 		return mesh
 	end
 end	
+type C
+	num_nodes;
+	num_elements;
+	num_bdy_nodes
+	num_int_elements;
+	num_bdy_elements;
+	nnz;
+	function C()
+		c = new()
+		return c;
+	end
+end
 type D
 	rx;
 	ry;
@@ -83,7 +96,7 @@ end
 			en = e*NPNP;
 			I[st:en] = ind1;
 			J[st:en] = ind2;
-			val[st:en] = reshape(eM,size(eM)[1].*size(eM)[2],1)
+			val[st:en] = eM[:]
 		end
 		M = sparse(I,J,val,dof,dof);
 	end
@@ -111,7 +124,7 @@ end
 			pts =  element_nodes(self, e, refel);
 			(detJac, Jac) = geometric_factors(self, refel, pts);
 			eMat = element_stiffness(self, e, refel, detJac, Jac);
-			stiff_val[st:en] = reshape(eM,size(eM)[1].*size(eM)[2],1)
+			stiff_val[st:en] = eM[:];
 		end
 #		return K
 	end
@@ -154,45 +167,23 @@ end
 			J[st:en] = ind2;
 			pts =  element_nodes(self, e, refel);
 			(detJac, Jac) = geometric_factors(self, refel, pts);
+			
 			eMat = element_mass(self, e, refel, detJac);
-			mass_val[st:en] = reshape(eMat,size(eMat)[1].*size(eMat)[2],1)
+			mass_val[st:en] = eMat[:];
+			
 			eMat = element_stiffness(self, e, refel, detJac, Jac);
-			stiff_val[st:en] = reshape(eMat,size(eMat)[1].*size(eMat)[2],1)
-			ind_inner_vec=reshape(ind_inner,size(ind_inner)[1].*size(ind_inner)[2],1)
+			stiff_val[st:en] = eMat[:];
 
-			eMat_inner_mat=[]
-			for index in ind_inner_vec
-				idxVal=eMat[:,index][ind_inner]
-				idxValr=reshape(idxVal,size(idxVal)[1].*size(idxVal)[2],1)				
-				if length(eMat_inner_mat)>0
-					eMat_inner_mat=cat(2, eMat_inner_mat, idxValr)
-				else
-					eMat_inner_mat=copy(idxValr)
-				end				
-			end
-			eMat_inner_inv = inv(eMat_inner_mat);
+			eMat_inner_inv = inv(eMat[ind_inner[:],ind_inner[:]]);
 			eMat_inv = diagm(diag(eMat,0));
 
-			z=1
-			eMat_inner_inv_len = length(eMat_inner_inv)
-			for x in ind_inner_vec
-				for y in ind_inner_vec
-					eMat_inv[y,x]=eMat_inner_inv[z]
-					z=z+1
-				end		
+			eMat_inv[ind_inner[:],ind_inner[:]] =  eMat_inner_inv;
+			inv_stiff_val[st:en] = eMat_inv[:];
 			end
 
-			eMat_inv_vec=reshape(eMat_inv,size(eMat_inv)[1].*size(eMat_inv)[2],1);
-			z=1
-			for idx=st:en
-				inv_stiff_val[idx] = eMat_inv_vec[z]
-				z=z+1
-			end
-		end
-		
-		Iv=vec(int64(I));
-		Jv=vec(int64(J));
-		mv=vec(mass_val);
+		Iv=int64(I[:]);
+		Jv=int64(J[:]);
+		mv=mass_val[:];
 
 		M = sparse(Iv,Jv,mv,dof,dof);
 		# zero dirichlet bdy conditions
@@ -207,24 +198,17 @@ end
 		J = [J; bdy];
 		stiff_val = [stiff_val; ones(length(bdy), 1)];
 		inv_stiff_val = [inv_stiff_val; ones(length(bdy), 1)];
-		Iv=vec(int64(I));
-		Jv=vec(int64(J));
-		sv=vec(stiff_val);
-		isv=vec(inv_stiff_val);
+		Iv=int64(I[:]);
+		Jv=int64(J[:]);
+		sv=stiff_val[:];
+		isv=inv_stiff_val[:];
 
 		K = sparse(Iv,Jv,sv,dof,dof);
 		iK = sparse(Iv,Jv,isv,dof,dof);
 		ebdy = get_element_boundary_node_indices(self, order);
 		iKebdry = diag(full(iK[ebdy,ebdy]),0)
 
-      	iKebdry_diag = diagm(1./iKebdry)
-      	z=1
-		for x in ebdy
-			for y in ebdy
-				iK[y,x]=iKebdry_diag[z]
-				z=z+1
-			end		
-		end
+      	iK[ebdy,ebdy] = diagm(1./iKebdry)
 		return K, M, iK
 	end
 	function assemble_rhs(self, fx, order)
@@ -254,8 +238,8 @@ end
 		refel = Refel( self.dim, self.order );
 
 		if ( order == self.order )
-			dof_coarse = prod(  self.nelems * self.order + 1);
-			dof_fine   = prod(2*self.nelems * self.order + 1);
+			dof_coarse = prod([self.nelems...] * self.order + 1);
+			dof_fine   = prod(2*[self.nelems...] * self.order + 1);
 			NP_c = (self.order+1)^self.dim;
 			NP_f = (2*self.order+1)^self.dim;
 			Pe = refel.Ph;
@@ -263,23 +247,19 @@ end
 			assert (order == 2*self.order);
 			NP_c = (self.order+1)^self.dim;
 			NP_f = (order+1)^self.dim;
-			dof_coarse = prod(self.nelems * self.order + 1);
-			dof_fine   = prod(self.nelems * order + 1);
+			dof_coarse = prod([self.nelems...] * self.order + 1);
+			dof_fine   = prod([self.nelems...] * order + 1);
 			Pe = refel.Pp; 
 		end
-
-		ne  = prod(self.nelems);
-
+		ne  = prod([self.nelems...]);
 		# storage for indices and values
 		NPNP = NP_c * NP_f;
-
 		I = zeros(ne * NPNP, 1);
 		J = zeros(ne * NPNP, 1);
 		val = zeros(ne * NPNP, 1);
 
 		for e=1:ne
-			(idx_c, idx_f) = self.get_interpolation_indices (e);
-
+			(idx_c, idx_f) = get_interpolation_indices (self,e);
 			ind1 = repmat(idx_f,NP_c,1);
 			ind2 = reshape(repmat(idx_c',NP_f,1),NPNP,1);
 			st = (e-1)*NPNP+1;
@@ -289,13 +269,12 @@ end
 
 			val[st:en] = reshape(Pe,size(Pe)[1].*size(Pe)[2],1)
 		end
-
-		(u_ij,q) = unique([I,J],"rows","first");
+		u_ij = unique([I J],1);
+		q=indunique([I J],1);
 		u_val   = val[q];
-		I = u_ij[:,1];
-		J = u_ij[:,2];
-
-		P = sparse(I,J,u_val,dof_fine,dof_coarse);
+		I = int64(u_ij[:,1]);
+		J = int64(u_ij[:,2]);
+		P = sparse(I[:],J[:],u_val[:],dof_fine,dof_coarse);
 		return P;
 	end
 	function get_node_indices ( self, eid, order )
@@ -307,8 +286,8 @@ end
 			j_low   = (j-1)*order + 1;   j_high =  j*order + 1;
 
 			(i,j) = ndgrid(i_low:i_high, j_low:j_high);
-			m=reshape(i,size(i)[1].*size(i)[2],1)
-			n=reshape(j,size(j)[1].*size(j)[2],1)
+			m=i[:]
+			n=j[:]
 			x=[1:length(m)]
 			idx = sub2ind([self.nelems...]'*order + 1,m[x],n[x])
 		else
@@ -320,9 +299,9 @@ end
 
 			(i,j,k) = ndgrid(i_low:i_high, j_low:j_high, k_low:k_high);
 
-			m=reshape(i,size(i)[1].*size(i)[2],1)
-			n=reshape(j,size(j)[1].*size(j)[2],1)
-			o=reshape(k,size(k)[1].*size(k)[2],1)
+			m=i[:]
+			n=j[:]
+			o=k[:]
 			x=[1:length(m)]
 			idx = sub2ind([self.nelems...]'*order + 1,m[x],n[x],o[x])
 		end
@@ -335,13 +314,13 @@ end
 
 			(i,j) = ndgrid(i:i+1, j:j+1);
 
-			idx     = sub2ind (self.nelems*order + 1, i(:), j(:));
+			idx     = sub2ind ([self.nelems...]'*order + 1, i(:), j(:));
 		else
 			(i,j,k) = ind2sub (self.nelems*order, eid);
 
 			(i,j,k) = ndgrid(i:i+1, j:j+1, k:k+1);
 
-			idx     = sub2ind (self.nelems*order + 1, reshape(i,size(i)[1].*size(i)[2],1), reshape(j,size(j)[1].*size(j)[2],1), reshape(k,size(k)[1].*size(k)[2],1) );
+			idx     = sub2ind ([self.nelems...]'*order + 1, i[:], j[:], k[:] );
 		end
 		return idx
 	end
@@ -353,10 +332,10 @@ end
 			i_low       = (i-1)*self.order + 1;   i_high =  i*self.order + 1;
 			j_low       = (j-1)*self.order + 1;   j_high =  j*self.order + 1;
 			(i,j)       = ndgrid(i_low:i_high, j_low:j_high);
-			idx_coarse  = sub2ind (self.nelems*self.order + 1, reshape(i,size(i)[1].*size(i)[2],1), reshape(j,size(j)[1].*size(j)[2],1));
+			idx_coarse  = sub2ind ([self.nelems...]*self.order + 1, i[:], j[:]);
 
 			(i,j)       = ndgrid(2*i_low-1:2*i_high-1, 2*j_low-1:2*j_high-1);
-			idx_fine    = sub2ind (2*self.nelems*self.order + 1, reshape(i,size(i)[1].*size(i)[2],1), reshape(j,size(j)[1].*size(j)[2],1));
+			idx_fine    = sub2ind (2*[self.nelems...]*self.order + 1, i[:], j[:]);
 		else
 			(i,j,k) = ind2sub (self.nelems, eid);
 
@@ -364,10 +343,10 @@ end
 			j_low       = (j-1)*self.order + 1;   j_high =  j*self.order + 1;
 			k_low       = (k-1)*self.order + 1;   k_high =  k*self.order + 1;
 			(i,j,k)     = ndgrid(i_low:i_high, j_low:j_high, k_low:k_high);
-			idx_coarse  = sub2ind (self.nelems*self.order + 1, reshape(i,size(i)[1].*size(i)[2],1), reshape(j,size(j)[1].*size(j)[2],1), reshape(k,size(k)[1].*size(k)[2],1) );
+			idx_coarse  = sub2ind ([self.nelems...]*self.order + 1, i[:], j[:], k[:] );
 
 			(i,j,k)     = ndgrid(2*i_low-1:2*i_high-1, 2*j_low-1:2*j_high-1, 2*k_low-1:2*k_high-1);
-			idx_fine    = sub2ind (2*self.nelems*self.order + 1, reshape(i,size(i)[1].*size(i)[2],1), reshape(j,size(j)[1].*size(j)[2],1), reshape(k,size(k)[1].*size(k)[2],1) );
+			idx_fine    = sub2ind (2*[self.nelems...]*self.order + 1, i[:], j[:], k[:] );
 		end
 		return idx_coarse, idx_fine
 	end
@@ -501,7 +480,7 @@ end
 			y1d = getGLLcoords(order, self.nelems(2));
 
 			(x, y) = ndgrid(x1d(i:i+1), y1d(j:j+1));
-			pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1)];
+			pts = [x[:] y[:]];
 		else
 			(i,j,k) = ind2sub (self.nelems*order, elem);
 
@@ -510,7 +489,7 @@ end
 			z1d = getGLLcoords(order, self.nelems(3));
 
 			(x, y, z) = ndgrid(x1d(i:i+1), y1d(j:j+1), z1d(k:k+1));
-			pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1) reshape(z,size(z)[1].*size(z)[2],1)];
+			pts = [x[:] y[:] z[:]];
 		end
 
 		coords = self.Xf(pts);
@@ -530,10 +509,10 @@ end
 		nodes = p_mid .+ p_gll;
 		if ( self.dim == 2)
 			(x, y) = ndgrid(nodes[:,1], nodes[:,2]);
-			pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1)];
+			pts = [x[:] y[:]];
 		else
 			(x, y, z) = ndgrid(nodes[:,1], nodes[:,2], nodes[:,3]);
-			pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1) reshape(z,size(z)[1].*size(z)[2],1)];
+			pts = [x[:] y[:] z[:]];
 		end
 		coords = self.Xf(pts);
 	end
@@ -557,10 +536,10 @@ end
 			nodes = p_mid .+ p_gau;
 			if ( self.dim == 2)
 				(x, y) = ndgrid(nodes[:,1], nodes[:,2]);
-				pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1)];
+				pts = [x[:] y[:]];
 			else
 				(x, y, z) = ndgrid(nodes[:,1], nodes[:,2], nodes[:,3]);
-				pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1) reshape(z,size(z)[1].*size(z)[2],1)];
+				pts = [x[:] y[:] z[:]];
 			end
 		else
 			assert(refel.N == 1); 
@@ -576,7 +555,7 @@ end
 
 				(x, y) = ndgrid(xg, yg);
 
-				pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1)];
+				pts = [x[:] y[:]];
 			else
 				(i,j,k) = ind2sub (tuple([self.nelems...]'*self.order), elem);
 
@@ -590,7 +569,7 @@ end
 
 				(x, y, z) = ndgrid(xg, yg, zg);
 
-				pts = [reshape(x,size(x)[1].*size(x)[2],1) reshape(y,size(y)[1].*size(y)[2],1) reshape(z,size(z)[1].*size(z)[2],1)];
+				pts = [x[:] y[:] z[:]];
 			end
 		end
 		coords = self.Xf(pts);
@@ -600,8 +579,8 @@ end
 
 		refel = Refel ( self.dim, 1 );
 
-		dof = prod ( self.nelems*order + 1);
-		ne  = prod ( self.nelems*order ) ;
+		dof = prod ( [self.nelems...]*order + 1);
+		ne  = prod ( [self.nelems...]*order ) ;
 
 		# storage for indices and values
 		NP = (1+1)^self.dim; # linear elements
@@ -615,7 +594,7 @@ end
 
 		# loop over elements
 		for e=1:ne
-			idx = self.get_linear_node_indices (e, order);
+			idx = get_linear_node_indices (self, e, order);
 
 			ind1 = repmat(idx,NP,1);
 			ind2 = reshape(repmat(idx',NP,1),NPNP,1);
@@ -624,29 +603,29 @@ end
 			I[st:en] = ind1;
 			J[st:en] = ind2;
 
-			pts = self.linear_element_nodes(e, order);
+			pts = linear_element_nodes(self, e, order);
 
 			(detJac, Jac) = geometric_factors(self, refel, pts);
 
 			eMat = element_mass(self, e, refel, detJac);
-			mass_val[st:en] = reshape(eMat,size(eMat)[1].*size(eMat)[2],1)
+			mass_val[st:en] = eMat[:];
 
 			eMat = element_stiffness(self, e, refel, detJac, Jac);
-			stiff_val[st:en] = reshape(eMat,size(eMat)[1].*size(eMat)[2],1)
+			stiff_val[st:en] = eMat[:];
 		end
-		M = sparse(I,J,mass_val,dof,dof);
+		M = sparse(int64(I[:]),int64(J[:]),mass_val[:],dof,dof);
 		# zero dirichlet bdy conditions
 		bdy = get_boundary_node_indices(self, order);
 
 		ii = ismember(I,bdy);
 		jj = ismember(J,bdy);
 
-		stiff_val = stiff_val.*(~ii).*(~jj);
+		stiff_val = stiff_val.*(int(!bool(ii))).*(int(!bool(jj)));
 		I = [I; bdy];
 		J = [J; bdy];
 		stiff_val = [stiff_val; ones(length(bdy), 1)];
 
-		K = sparse(I,J,stiff_val,dof,dof);
+		K = sparse(int64(I[:]),int64(J[:]),stiff_val[:],dof,dof);
 		return K, M
 	end
 	function getGLLcoords(order, elems)
@@ -686,12 +665,13 @@ end
 		#   given number of elements and the order,
 		#   this function calculates different node 
 		#   stats for the mesh
+		C=Mesh.C();
 		d               = length(nelems);
-		C.num_nodes     = prod(nelems*order + 1);
-		C.num_elements  = prod(nelems);
-		C.num_bdy_nodes = C.num_nodes - prod(nelems*order - 1);
+		C.num_nodes     = prod([nelems...]*order + 1);
+		C.num_elements  = prod([nelems...]);
+		C.num_bdy_nodes = C.num_nodes - prod([nelems...]*order - 1);
 
-		C.num_int_elements = prod(nelems - 1);
+		C.num_int_elements = prod([nelems...] - 1);
 		C.num_bdy_elements = C.num_elements - C.num_int_elements;
 
 		C.nnz = (order+2)^d*C.num_nodes;
