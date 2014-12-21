@@ -1,4 +1,3 @@
-#using PyPlot
 
 module Mesh
 include("Refel.jl")
@@ -6,6 +5,7 @@ include("Basis.jl")
 include("Tensor.jl")
 include("BaseCustom.jl")
 
+import PyPlot
 export set_coeff
 
 type Hexmesh
@@ -54,6 +54,313 @@ type D
 		return d
 	end
 end
+function plot(self)
+
+	# display the mesh. Needs X.
+	# PyPlot.figure(1)
+	def_color = (31/256,171/256,226/256);   # default color of grid
+	lw = 1;                         # default line width of grid
+  
+	if (self.dim == 2 )      	
+	  	(x,y) = ndgrid(0:1/self.nelems[1]:1.0, 0:1/self.nelems[2]:1.0);
+	  	pts = [x[:] y[:]];
+	  	coords = self.Xf(pts);
+	  	PyPlot.plot(coords[:,1], coords[:,2], c="black", marker="o", linestyle="None", hold="True");
+	    # hold on;
+	    x = reshape(coords[:,1], self.nelems[1]+1, self.nelems[2]+1);
+	    y = reshape(coords[:,2], self.nelems[1]+1, self.nelems[2]+1);
+	    PyPlot.plot(x,y, c=def_color, linewidth=lw);
+	    PyPlot.plot(x',y', c=def_color, linewidth=lw);
+	    # boundary test
+	    idx = get_boundary_node_indices(self, 1);
+	    PyPlot.plot(coords[idx,1], coords[idx,2], c="r", marker="o", linestyle="None");
+	    PyPlot.title(string("Quad Mesh - ", self.nelems[1], "x", self.nelems[2]))
+	    # axis square
+	else
+	    # 2 xy planes
+	    (x,y) = ndgrid( 0:1/self.nelems[1]:1.0, 0:1/self.nelems[2]:1.0 );
+	    
+	    # z = 0
+	    z = zeros (size(x));
+	    pts = [x[:] y[:] z[:]];
+	    coords = self.Xf(pts);
+	    x0 = reshape(coords[:,1], size(x));
+	    y0 = reshape(coords[:,2], size(x));
+	    z0 = reshape(coords[:,3], size(x));
+	    PyPlot.surf(x0, y0, z0, alpha=0.5);
+
+	    # hold on;
+	    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[2]+1);
+	    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[2]+1);
+	    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[2]+1);
+
+	    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+	    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k",  linestyle="-"); 
+	    # z = 1
+	    z = ones  (size(x));
+	    pts = [x[:] y[:] z[:]];
+	    coords = self.Xf(pts);
+	    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+	    # hold on;
+	    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[2]+1);
+	    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[2]+1);
+	    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[2]+1);
+	    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+	    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-");
+	    #--------------------------------------------------------------------
+	    # 2 yz planes
+	    (y,z) = ndgrid( 0:1/self.nelems[2]:1.0, 0:1/self.nelems[3]:1.0 );
+	    # x = 0
+	    x = zeros (size(y));
+	    pts = [x[:] y[:] z[:]];
+	    coords = self.Xf(pts);
+	    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+	    # hold on;
+	    x1 = reshape(coords[:,1], self.nelems[2]+1, self.nelems[3]+1);
+	    y1 = reshape(coords[:,2], self.nelems[2]+1, self.nelems[3]+1);
+	    z1 = reshape(coords[:,3], self.nelems[2]+1, self.nelems[3]+1);
+	    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+	    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k",  linestyle="-"); 
+	    # x = 1
+	    x = ones (size(y));
+	    pts = [x[:] y[:] z[:]];
+	    coords = self.Xf(pts);
+	    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+	    # hold on;
+	    x1 = reshape(coords[:,1], self.nelems[2]+1, self.nelems[3]+1);
+	    y1 = reshape(coords[:,2], self.nelems[2]+1, self.nelems[3]+1);
+	    z1 = reshape(coords[:,3], self.nelems[2]+1, self.nelems[3]+1);
+	    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+	    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k",  linestyle="-"); 
+	    #--------------------------------------------------------------------
+	    # 2 xz planes
+	    (x,z) = ndgrid( 0:1/self.nelems[1]:1.0, 0:1/self.nelems[3]:1.0 );
+	    # y = 0
+	    y = zeros (size(x));
+	    pts = [x[:] y[:] z[:]];
+	    coords = self.Xf(pts);
+	    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+	    # hold on;
+	    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[3]+1);
+	    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[3]+1);
+	    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[3]+1);
+	    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+	    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k",  linestyle="-"); 
+	    # y = 1
+	    y = ones (size(x));
+	    pts = [x[:] y[:] z[:]];
+	    coords = self.Xf(pts);
+	    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+	    # hold on;
+	    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[3]+1);
+	    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[3]+1);
+	    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[3]+1);
+	    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+	    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k",  linestyle="-"); 
+	    
+	    # pretty views etc 
+	    # view(3); axis equal;
+	    # title(['Hex Mesh ' num2str(self.nelems[1]) 'x' num2str(self.nelems[2]) 'x' num2str(self.nelems[3])])
+	end
+	# set (gcf, 'renderer', 'opengl');
+	# cameratoolbar('show');
+	# cameratoolbar('setmode', 'orbit');
+end
+function plot_fx(self, fx)
+# display the mesh. Needs X.
+# hFig = figure(1);
+# set(gcf,'PaperPositionMode','auto')
+# set(hFig, 'Position', [200 200 800 800])
+
+if (self.dim == 2 )
+    scl=8;
+    (x,y) = ndgrid(0:1/(scl*self.nelems[1]):1.0, 0:1/(scl*self.nelems[2]):1.0);
+    pts = [x[:] y[:]];
+    coords = self.Xf(pts);
+
+    ci = arrayfun( fx, coords[:,1], coords[:,2] );
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    zeros(size(x)), reshape(ci, size(x)), ...
+    #    'EdgeColor','none','LineStyle','none' ...
+    #    );
+	PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+
+    # hold on;
+    (x,y) = ndgrid(0:1/self.nelems[1]:1.0, 0:1/self.nelems[2]:1.0);
+    pts = [x[:] y[:]];
+    coords = self.Xf(pts);
+    x = reshape(coords[:,1], self.nelems[1]+1, self.nelems[2]+1);
+    y = reshape(coords[:,2], self.nelems[1]+1, self.nelems[2]+1);
+    PyPlot.plot(x,y, c="k", linestyle="-"); 
+    PyPlot.plot(x',y', c="k", linestyle="-"); 
+
+    # axis square;
+    # view(0,90);
+    # colorbar;
+else
+    # will draw 6 planes ...
+    #--------------------------------------------------------------------
+    # 2 xy planes
+    scl=8;
+    (x,y) = ndgrid( 0:1/(scl*self.nelems[1]):1.0, 0:1/(scl*self.nelems[2]):1.0 );
+    # z = 0
+    z = zeros (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    ci = arrayfun( fx, coords[:,1], coords[:,2], coords[:,3] );
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    reshape(coords[:,3], size(x)), ...
+    #    reshape(ci, size(x)), ...
+    #    'EdgeColor','none','LineStyle','none' ...
+    #    );
+	PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+
+    # hold on;
+    (x,y) = ndgrid( 0:1/self.nelems[1]:1.0, 0:1/self.nelems[2]:1.0 );
+    z = zeros (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[2]+1);
+    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[2]+1);
+    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[2]+1);
+    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-"); 
+    # z = 1
+    (x,y) = ndgrid( 0:1/(scl*self.nelems[1]):1.0, 0:1/(scl*self.nelems[2]):1.0 );
+    z = ones  (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    ci = arrayfun( fx, coords[:,1], coords[:,2], coords[:,3] );
+    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    reshape(coords[:,3], size(x)), ...
+    #    reshape(ci, size(x)), ...
+    #    'EdgeColor','none','LineStyle','none' ...
+    #     ); # 'FaceColor', 'interp', 'FaceLighting', 'phong' 
+    # hold on;
+    (x,y) = ndgrid( 0:1/self.nelems[1]:1.0, 0:1/self.nelems[2]:1.0 );
+    z = ones  (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[2]+1);
+    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[2]+1);
+    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[2]+1);
+    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-"); 
+    #--------------------------------------------------------------------
+    # 2 yz planes
+    (y,z) = ndgrid( 0:1/(scl*self.nelems[2]):1.0, 0:1/(scl*self.nelems[3]):1.0 );
+    # x = 0
+    x = zeros (size(y));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    ci = arrayfun( fx, coords[:,1], coords[:,2], coords[:,3] );
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    reshape(coords[:,3], size(x)), ...
+    #    reshape(ci, size(x)), ...
+    #    'EdgeColor','none','LineStyle','none' ...
+    #    );
+    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+
+    # hold on;
+    (y,z) = ndgrid( 0:1/self.nelems[2]:1.0, 0:1/self.nelems[3]:1.0 );
+    # x = 0
+    x = zeros (size(y));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    x1 = reshape(coords[:,1], self.nelems[2]+1, self.nelems[3]+1);
+    y1 = reshape(coords[:,2], self.nelems[2]+1, self.nelems[3]+1);
+    z1 = reshape(coords[:,3], self.nelems[2]+1, self.nelems[3]+1);
+    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-"); 
+    x = 1
+    (y,z) = ndgrid( 0:1/(scl*self.nelems[2]):1.0, 0:1/(scl*self.nelems[3]):1.0 );
+    x = ones (size(y));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    ci = arrayfun( fx, coords[:,1], coords[:,2], coords[:,3] );
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    reshape(coords[:,3], size(x)), ...
+    #    reshape(ci, size(x)), ...
+    #    'EdgeColor','none','LineStyle','none' ...
+    #    );
+    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+
+    # hold on;
+    (y,z) = ndgrid( 0:1/self.nelems[2]:1.0, 0:1/self.nelems[3]:1.0 );
+    x = ones (size(y));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    x1 = reshape(coords[:,1], self.nelems[2]+1, self.nelems[3]+1);
+    y1 = reshape(coords[:,2], self.nelems[2]+1, self.nelems[3]+1);
+    z1 = reshape(coords[:,3], self.nelems[2]+1, self.nelems[3]+1);
+    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-"); 
+    #--------------------------------------------------------------------
+    # 2 xz planes
+    (x,z) = ndgrid( 0:1/(scl*self.nelems[1]):1.0, 0:1/(scl*self.nelems[3]):1.0 );
+    # y = 0
+    y = zeros (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    ci = arrayfun( fx, coords[:,1], coords[:,2], coords[:,3] );
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    reshape(coords[:,3], size(x)), ...
+    #    reshape(ci, size(x)) ...
+    #    );
+    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+
+    # hold on;
+    (x,z) = ndgrid( 0:1/self.nelems[1]:1.0, 0:1/self.nelems[3]:1.0 );
+    y = zeros (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[3]+1);
+    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[3]+1);
+    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[3]+1);
+    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-"); 
+    # y = 1
+    (x,z) = ndgrid( 0:1/(scl*self.nelems[1]):1.0, 0:1/(scl*self.nelems[3]):1.0 );
+    y = ones (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    ci = arrayfun( fx, coords[:,1], coords[:,2], coords[:,3] );
+    # surf(reshape(coords[:,1], size(x)), ... 
+    #    reshape(coords[:,2], size(x)), ...
+    #    reshape(coords[:,3], size(x)), ...
+    #    reshape(ci, size(x)) ...
+    #    );
+    PyPlot.surf(reshape(coords[:,1], size(x)), reshape(coords[:,2], size(x)), reshape(coords[:,3], size(x)), alpha=0.5);
+    
+    # hold on;
+    (x,z) = ndgrid( 0:1/self.nelems[1]:1.0, 0:1/self.nelems[3]:1.0 );
+    y = ones (size(x));
+    pts = [x[:] y[:] z[:]];
+    coords = self.Xf(pts);
+    x1 = reshape(coords[:,1], self.nelems[1]+1, self.nelems[3]+1);
+    y1 = reshape(coords[:,2], self.nelems[1]+1, self.nelems[3]+1);
+    z1 = reshape(coords[:,3], self.nelems[1]+1, self.nelems[3]+1);
+    PyPlot.plot3D(x1[:],y1[:],z1[:], c="k", linestyle="-"); 
+    PyPlot.plot3D(x1'[:],y1'[:],z1'[:], c="k", linestyle="-");
+
+    # pretty views etc 
+    # view(3); axis square
+    # view(150,40);
+    # # colorbar;
+end
+
+# set (gcf, 'renderer', 'opengl');
+# cameratoolbar('show');
+# cameratoolbar('setmode', 'orbit');
+end
 	function set_order(self, order)
 		if isempty(self.order)
 			self.order = order;
@@ -75,8 +382,8 @@ end
 		set_order(self, order);
 		# assemble the mass matrix
 		refel = Refel( self.dim, order );
-		dof = prod(self.nelems*order + 1);
-		ne = prod(self.nelems);
+		dof = prod([self.nelems...]*order + 1);
+		ne = prod([self.nelems...]);
 		# storage for indices and values
 		NP = (order+1)^self.dim;
 		NPNP = NP * NP;
@@ -98,14 +405,15 @@ end
 			J[st:en] = ind2;
 			val[st:en] = eM[:]
 		end
-		M = sparse(I,J,val,dof,dof);
+		M = sparse(int64(I[:]),int64(J[:]),val[:],dof,dof);
+		return M;
 	end
 	function assemble_stiffness(self, order)
 		set_order(self, order);
 		# assemble the stiffness matrix
 		refel = Refel( self.dim, order );
-		dof = prod(self.nelems*order + 1);
-		ne = prod(self.nelems);
+		dof = prod([self.nelems...]*order + 1);
+		ne = prod([self.nelems...]);
 		# storage for indices and values
 		NP = (order+1)^self.dim;
 		NPNP = NP * NP;
@@ -207,8 +515,9 @@ end
 		iK = sparse(Iv,Jv,isv,dof,dof);
 		ebdy = get_element_boundary_node_indices(self, order);
 		iKebdry = diag(full(iK[ebdy,ebdy]),0)
-
+		if countnz(iKebdry) > 0
       	iK[ebdy,ebdy] = diagm(1./iKebdry)
+	    end
 		return K, M, iK
 	end
 	function assemble_rhs(self, fx, order)
@@ -314,7 +623,7 @@ end
 
 			(i,j) = ndgrid(i:i+1, j:j+1);
 
-			idx     = sub2ind ([self.nelems...]'*order + 1, i(:), j(:));
+			idx     = sub2ind ([self.nelems...]'*order + 1, i[:], j[:]);
 		else
 			(i,j,k) = ind2sub (self.nelems*order, eid);
 
@@ -409,15 +718,14 @@ end
 		#             5  6  3
 
 		if (self.dim == 2 )
-			mu = self.coeff(gpts[:,1], gpts[:,2] );
-
+			mu = map(self.coeff, gpts[:,1], gpts[:,2] );
 			factor [:,1] = (D.rx.*D.rx + D.ry.*D.ry ) .* J .* r.W .* mu ; # d2u/dx^2
 			factor [:,2] = (D.sx.*D.sx + D.sy.*D.sy ) .* J .* r.W .* mu ; # d2u/dy^2
 			factor [:,3] = (D.rx.*D.sx + D.ry.*D.sy ) .* J .* r.W .* mu ; # d2u/dxdy
 
 			Ke =   r.Qx' * diagm(factor[:,1]) * r.Qx + r.Qy' * diagm(factor[:,2]) * r.Qy + r.Qx' * diagm(factor[:,3]) * r.Qy + r.Qy' * diagm(factor[:,3]) * r.Qx ;
 		else
-			mu = self.coeff(gpts[:,1], gpts[:,2], gpts[:,3] );
+			mu = map(self.coeff, gpts[:,1], gpts[:,2], gpts[:,3] );
 
 			# first compute dj.w.J.J'
 			factor [:,1] = (D.rx.*D.rx + D.ry.*D.ry + D.rz.*D.rz ) .* J .* r.W .* mu ; # d2u/dx^2

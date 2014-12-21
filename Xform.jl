@@ -29,9 +29,8 @@ function shell (Xin)
 	R1 = 0.7; # hard coded for now.
 	R2byR1 = R2 / R1;
 	R1sqrbyR2 = R1 * R1 / R2;
-
 	if (d == 2)
-		x = zeros( size(Xin(:,1)) );
+		x = zeros( size(Xin[:,1]) );
 		y = tan ( Xin[:,1]  * pi/4 );
 		R = R1sqrbyR2 * ( R2byR1.^(Xin[:,2] + 1) ) ;
 	else
@@ -39,7 +38,6 @@ function shell (Xin)
 		y = tan ( Xin[:,2]  * pi/4 );
 		R = R1sqrbyR2 * ( R2byR1.^(Xin[:,3] + 1) );
 	end
-
 	q = R ./ sqrt (x.*x + y.*y + 1);
 	if (d == 3)
 		Xout = zeros(size(q)[1],3) #define Xout to use below
